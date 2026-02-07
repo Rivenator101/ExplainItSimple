@@ -1,7 +1,7 @@
 import streamlit as st
-import requests
 import json
 import os
+from transformers import pipeline
 
 st.set_page_config(page_title="ExplainItSimple", page_icon="🧠✨")
 
@@ -14,12 +14,9 @@ age = st.slider("Explain for approximately this age (years):", min_value=8, max_
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
 
 prompt_template = (
-    "You are an assistant that explains academic text simply and concisely."
-    " First, provide a clear, friendly explanation targeted at a {age}-year-old."
-    " Then produce {n} short multiple-choice or short-answer quiz questions (Q + A)."
-    " Label sections clearly as 'EXPLANATION' and 'QUIZ'. Keep the explanation 2-6 short paragraphs."
-    " If the input includes equations or code, keep them but explain them in plain terms.\n\n"
-    "TEXT:\n{input_text}"
+    "Explain this text simply for a {age}-year-old:\n\n{input_text}\n\n"
+    "EXPLANATION:\n(Clear, friendly explanation in 2-4 short paragraphs)\n\n"
+    "QUIZ:\n(Create {n} simple quiz questions with answers)"
 )
 
 
@@ -27,29 +24,23 @@ def build_prompt(text, age, n):
     return prompt_template.format(age=age, n=n, input_text=text)
 
 
-def call_openai(prompt, model="gpt2", max_tokens=800):
-    """Call free HuggingFace Inference API using public endpoints (no auth needed)."""
-    # Using Hugging Face's Inference API via public model endpoints
-    api_url = "https://api-inference.huggingface.co/models/gpt2"
-    
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_length": max_tokens,
-            "temperature": 0.7,
-        }
-    }
-    
+@st.cache_resource
+def load_model():
+    """Load the text generation pipeline (cached for performance)."""
+    return pipeline("text-generation", model="distilgpt2", device=-1)
+
+
+def call_openai(prompt, max_tokens=500):
+    """Generate text using local distilgpt2 model."""
     try:
-        response = requests.post(api_url, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
+        generator = load_model()
+        result = generator(prompt, max_length=max_tokens, temperature=0.7, do_sample=True)
         
-        if isinstance(result, list) and len(result) > 0:
+        if result and len(result) > 0:
             return result[0].get("generated_text", "")
-        return str(result)
+        return ""
     except Exception as e:
-        st.error(f"API Error: {str(e)[:100]} 😿")
+        st.error(f"Model Error: {str(e)[:100]} 😿")
         return None
 
 if st.button("Explain It! 💖"):
@@ -60,7 +51,7 @@ if st.button("Explain It! 💖"):
         with st.spinner("Thinking cute thoughts... ✨"):
             result = None
             try:
-                result = call_openai(prompt, model="gpt2", max_tokens=800)
+                result = call_openai(prompt, max_tokens=500)
             except Exception as e:
                 st.error(f"Error: {e} 😵‍💫")
                 st.stop()
@@ -69,14 +60,14 @@ if st.button("Explain It! 💖"):
             if not result:
                 st.stop()
 
-            # Try to split into explanation and quiz if the assistant followed the format
+            # Try to split into explanation and quiz if the model followed the format
             st.subheader("📘 Simple Explanation (made extra snuggly)")
             if "EXPLANATION" in result:
                 explanation = result.split("EXPLANATION")[-1]
                 explanation = explanation.split("QUIZ")[0].strip()
             else:
                 # fallback: show first part
-                explanation = result[:500]  # Show first 500 chars
+                explanation = result[:400]  # Show first 400 chars
             st.markdown(explanation)
 
             st.subheader("📝 Quiz Questions — try these! ✨")
