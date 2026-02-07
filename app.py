@@ -14,32 +14,49 @@ num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_val
 
 
 def simplify_text(text, age, num_q):
-    """Simplify text for the given age group."""
+    """Simplify text with engaging commentary for the given age group."""
     # Extract key sentences
     sentences = re.split(r'[.!?]+', text)
-    sentences = [s.strip() for s in sentences if len(s.strip()) > 10][:5]
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 10][:6]
     
     age_descriptor = "little kids" if age < 10 else "teenagers" if age > 14 else "kids your age"
     
-    explanation = f"**Here's what this text is about for {age_descriptor}:**\n\n"
-    explanation += "The text talks about:\n"
+    # More engaging intro with commentary
+    explanation = f"✨ **Alright bestie, let me break this down for you!** ✨\n\n"
+    explanation += f"So you're learning about some pretty advanced stuff here (´・ω・`), and I'm gonna make it super easy to understand!\n\n"
+    
+    explanation += "**Here's the main tea:**\n\n"
+    
+    # Add engaging commentary for each key point
+    commentary = [
+        "**The Big Picture:** ",
+        "**Deep Dive Moment:** ",
+        "**Plot Twist Alert:** "
+    ]
+    
     for i, sent in enumerate(sentences[:3], 1):
         # Remove complex terms
         simple = sent.replace("postulated", "said").replace("electron", "tiny particle")
         simple = simple.replace("stationary states", "special positions")
-        simple = simple.replace("electrostatic", "electric")
-        explanation += f"{i}. {simple}\n"
+        simple = simple.replace("electrostatic", "electric").replace("quantum", "super tiny")
+        simple = simple.replace("mechanics", "rules of nature").replace("atom", "teeny tiny thing")
+        
+        # Add engaging commentary
+        comment = commentary[i-1] if i <= len(commentary) else f"**Fun Fact #{i}:** "
+        explanation += f"{comment} {simple}\n\n"
     
-    explanation += f"\n**Why is this cool?** Because it helps us understand how things work at super tiny scales! (*´∇`*)"
+    explanation += "**Why Should You Care?** (´▽`♡)\n"
+    explanation += "This stuff explains how the universe works at the tiniest level! Scientists like Schrödinger figured out that tiny particles don't follow the same rules as big stuff—it's wild! Understanding this is like having a superpower to see how atoms behave. Plus, this is the foundation of literally ALL modern technology (phones, computers, everything!). Isn't that insane?? (*´∇`*)\n"
     
-    quiz = f"**{num_q} Quick Quiz Questions:**\n\n"
+    quiz = f"\n\n**{num_q} Super Engaging Quiz Questions:**\n\n"
     for i in range(min(num_q, 3)):
         if i == 0:
-            quiz += f"**Q{i+1}:** What's the main topic of this text?\n**A:** The text discusses physics and how atoms behave.\n\n"
+            quiz += f"**Q{i+1}: The Main Idea** (´・ω・`)\nWhat's the BIG topic of this text?\n**A:** Scientists explaining how atoms and tiny particles work, especially the revolutionary ideas from Schrödinger!\n\n"
         elif i == 1:
-            quiz += f"**Q{i+1}:** Name one scientist mentioned in the text.\n**A:** Erwin Schrödinger (or any other mentioned scientist)\n\n"
+            quiz += f"**Q{i+1}: Name Dropping** (*´ω`*)\nWho was one of the MAJOR scientists mentioned that changed physics forever?\n**A:** Erwin Schrödinger (or Albert Einstein, Niels Bohr—they're all legends!)\n\n"
         else:
-            quiz += f"**Q{i+1}:** What does this help us understand?\n**A:** How tiny particles and atoms work!\n\n"
+            quiz += f"**Q{i+1}: Why It Matters** (´▽`♡)\nWhat does understanding quantum mechanics help us do?\n**A:** Build technology, understand the universe, and appreciate how absolutely BONKERS reality is at tiny scales!\n\n"
+    
     
     return explanation, quiz
 
