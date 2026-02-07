@@ -46,7 +46,7 @@ def build_prompt(text, age, n):
 
 def call_openai(prompt, api_key, model="meta-llama/Llama-2-7b-chat-hf", max_tokens=800):
     """Call HuggingFace Inference API."""
-    url = f"https://api-inference.huggingface.co/models/{model}"
+    url = f"https://router.huggingface.co/models/{model}"
     headers = {"Authorization": f"Bearer {api_key}"}
     payload = {
         "inputs": prompt,
