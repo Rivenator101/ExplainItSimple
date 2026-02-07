@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import re
+import requests
 
 st.set_page_config(page_title="ExplainItSimple", page_icon="(´・ω・`)")
 
@@ -11,6 +12,19 @@ st.write("Paste your homework or notes below—I'll make them suuuper simple and
 user_text = st.text_area("Paste your text here (or drop a paragraph):", height=250)
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
+
+# Mode: lightweight or hosted model
+mode = st.radio("Mode:", ("Lightweight (no API)", "Hosted LLM (requires API key)"), index=0)
+api_provider = None
+api_key = None
+model_name = None
+if mode.startswith("Hosted"):
+    api_provider = st.selectbox("Provider:", ("HuggingFace", "OpenAI"))
+    # sensible defaults per provider
+    default_model = "google/flan-t5-small" if api_provider == "HuggingFace" else "gpt-3.5-turbo"
+    model_name = st.text_input("Model name:", value=default_model)
+    api_key = st.text_input("API key (kept local):", type="password")
+    st.info("API keys must be provided here or via environment variables on deployment. Do NOT commit secrets.")
 
 
 def simplify_text(text, age, num_q):
@@ -105,12 +119,81 @@ def simplify_text(text, age, num_q):
     
     return explanation, quiz
 
+
+def call_hosted(prompt, provider, api_key, model="gpt-3.5-turbo"):
+    """Call a hosted LLM provider (HuggingFace or OpenAI) via HTTP. Returns string or None on error."""
+    try:
+        if provider == "HuggingFace":
+            url = f"https://api-inference.huggingface.co/models/{model}"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            payload = {"inputs": prompt, "parameters": {"max_new_tokens": 400, "temperature": 0.2}}
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, list) and len(data) > 0:
+                return data[0].get("generated_text") or str(data[0])
+            if isinstance(data, dict) and data.get("generated_text"):
+                return data.get("generated_text")
+            return str(data)
+
+        if provider == "OpenAI":
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            body = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+                "max_tokens": 500,
+            }
+            resp = requests.post(url, headers=headers, json=body, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+
+        return None
+    except Exception as e:
+        st.error(f"Hosted API error: {str(e)[:200]}")
+        return None
+
 if st.button("Explain It! (´▽`♡)"):
     if not user_text.strip():
         st.warning("Please paste some text to explain. I can't read blank vibes! (´；ω；`)")
     else:
         with st.spinner("Thinking cute thoughts... (*´∇`*)"):
-            explanation, quiz = simplify_text(user_text, age, num_questions)
+            explanation = None
+            quiz = None
+
+            if mode.startswith("Hosted"):
+                if not api_key:
+                    st.warning("Hosted LLM selected — please enter your API key above.")
+                    st.stop()
+
+                prompt = (
+                    f"Explain this text simply for a {age}-year-old and then produce {num_questions} short quiz questions."
+                    "\n\nLABEL THE RESPONSE WITH 'EXPLANATION' THEN 'QUIZ' SO IT'S EASY TO PARSE.\n\n"
+                    f"TEXT:\n{user_text}"
+                )
+
+                hosted_out = call_hosted(prompt, api_provider, api_key, model_name)
+                if not hosted_out:
+                    st.error("Hosted model returned no output.")
+                    st.stop()
+
+                # Try to split hosted output by markers
+                if "EXPLANATION" in hosted_out:
+                    explanation = hosted_out.split("EXPLANATION")[-1]
+                    explanation = explanation.split("QUIZ")[0].strip()
+                else:
+                    explanation = hosted_out[:800]
+
+                if "QUIZ" in hosted_out:
+                    quiz = hosted_out.split("QUIZ")[-1].strip()
+                else:
+                    # fallback: generate quiz from the original text
+                    _, quiz = simplify_text(user_text, age, num_questions)
+
+            else:
+                explanation, quiz = simplify_text(user_text, age, num_questions)
 
             st.subheader("(´・ω・`) Simple Explanation (made extra snuggly)")
             st.markdown(explanation)
