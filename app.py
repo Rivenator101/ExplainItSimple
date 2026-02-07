@@ -50,6 +50,28 @@ def build_prompt(text, age, n):
     return prompt_template.format(age=age, n=n, input_text=text)
 
 
+def demo_mode(user_text, age, num_questions):
+    """Return a sample explanation + quiz for demo purposes when API unavailable."""
+    sample_explanation = f"""This text discusses important concepts. Here's what you need to know:
+
+- **Key Idea 1:** The main topic is interesting and relevant.
+- **Key Idea 2:** There are several supporting details that help explain it.
+- **Key Idea 3:** This connects to other knowledge areas.
+
+The main takeaway is that understanding these core ideas will help you with future learning!"""
+    
+    sample_quiz = f"""**Q1:** What is the main topic?
+Answer: The core subject of the text.
+
+**Q2:** Why is this important?
+Answer: It helps us understand key concepts.
+
+**Q3:** Can you give a real-world example?
+Answer: (Your own answer!)"""
+    
+    return f"EXPLANATION\n{sample_explanation}\n\nQUIZ\n{sample_quiz}"
+
+
 def call_openai(prompt, client, model=MODEL, max_tokens=800):
     return client.chat.completions.create(
         model=model,
@@ -78,7 +100,10 @@ if st.button("Explain It! 💖"):
                 # Detect quota or rate-limit style errors and try a cheaper fallback model
                 msg = str(e)
                 if "quota" in msg.lower() or "exceeded" in msg.lower() or "insufficient_quota" in msg.lower() or "429" in msg:
-                    st.warning("Quota exceeded for the preferred model — trying a cheaper fallback model (gpt-3.5-turbo). ⏳")
+                    st.warning("Quota exceeded — using demo mode. (Add billing to OpenAI for live mode.) ⏳")
+                    result = demo_mode(user_text, age, num_questions)
+                else:
+                    # Try fallback model on other errors
                     try:
                         resp = call_openai(prompt, client, model=FALLBACK_MODEL, max_tokens=400)
                         try:
@@ -89,15 +114,12 @@ if st.button("Explain It! 💖"):
                             except Exception:
                                 result = str(resp)
                     except Exception as e2:
-                        st.error(f"Fallback model error: {e2} 😿")
-                        result = None
-                else:
-                    st.error(f"Error: {e} 😵‍💫")
-                    result = None
+                        st.warning(f"API unavailable — using demo mode to show how ExplainItSimple works. ✨")
+                        result = demo_mode(user_text, age, num_questions)
 
                 # If no result was produced (e.g., both preferred and fallback failed), stop gracefully
                 if not result:
-                    st.error("No response from OpenAI — likely quota exhausted or an API error. Please check your API key/billing and try again.")
+                    st.error("Something went wrong. Please try again.")
                     st.stop()
 
                 # Try to split into explanation and quiz if the assistant followed the format
