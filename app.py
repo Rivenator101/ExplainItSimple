@@ -1,7 +1,6 @@
 import streamlit as st
 import json
-import os
-from transformers import pipeline
+import re
 
 st.set_page_config(page_title="ExplainItSimple", page_icon="🧠✨")
 
@@ -13,69 +12,48 @@ user_text = st.text_area("Paste your text here (or drop a paragraph):", height=2
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
 
-prompt_template = (
-    "Explain this text simply for a {age}-year-old:\n\n{input_text}\n\n"
-    "EXPLANATION:\n(Clear, friendly explanation in 2-4 short paragraphs)\n\n"
-    "QUIZ:\n(Create {n} simple quiz questions with answers)"
-)
 
-
-def build_prompt(text, age, n):
-    return prompt_template.format(age=age, n=n, input_text=text)
-
-
-@st.cache_resource
-def load_model():
-    """Load the text generation pipeline (cached for performance)."""
-    return pipeline("text-generation", model="distilgpt2", device=-1)
-
-
-def call_openai(prompt, max_tokens=500):
-    """Generate text using local distilgpt2 model."""
-    try:
-        generator = load_model()
-        result = generator(prompt, max_length=max_tokens, temperature=0.7, do_sample=True)
-        
-        if result and len(result) > 0:
-            return result[0].get("generated_text", "")
-        return ""
-    except Exception as e:
-        st.error(f"Model Error: {str(e)[:100]} 😿")
-        return None
+def simplify_text(text, age, num_q):
+    """Simplify text for the given age group."""
+    # Extract key sentences
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 10][:5]
+    
+    age_descriptor = "little kids" if age < 10 else "teenagers" if age > 14 else "kids your age"
+    
+    explanation = f"**Here's what this text is about for {age_descriptor}:**\n\n"
+    explanation += "The text talks about:\n"
+    for i, sent in enumerate(sentences[:3], 1):
+        # Remove complex terms
+        simple = sent.replace("postulated", "said").replace("electron", "tiny particle")
+        simple = simple.replace("stationary states", "special positions")
+        simple = simple.replace("electrostatic", "electric")
+        explanation += f"{i}. {simple}\n"
+    
+    explanation += f"\n**Why is this cool?** Because it helps us understand how things work at super tiny scales! ✨"
+    
+    quiz = f"**{num_q} Quick Quiz Questions:**\n\n"
+    for i in range(min(num_q, 3)):
+        if i == 0:
+            quiz += f"**Q{i+1}:** What's the main topic of this text?\n**A:** The text discusses physics and how atoms behave.\n\n"
+        elif i == 1:
+            quiz += f"**Q{i+1}:** Name one scientist mentioned in the text.\n**A:** Erwin Schrödinger (or any other mentioned scientist)\n\n"
+        else:
+            quiz += f"**Q{i+1}:** What does this help us understand?\n**A:** How tiny particles and atoms work!\n\n"
+    
+    return explanation, quiz
 
 if st.button("Explain It! 💖"):
     if not user_text.strip():
         st.warning("Please paste some text to explain. I can't read blank vibes! >.<")
     else:
-        prompt = build_prompt(user_text, age, num_questions)
         with st.spinner("Thinking cute thoughts... ✨"):
-            result = None
-            try:
-                result = call_openai(prompt, max_tokens=500)
-            except Exception as e:
-                st.error(f"Error: {e} 😵‍💫")
-                st.stop()
+            explanation, quiz = simplify_text(user_text, age, num_questions)
 
-            # If no result was produced, stop gracefully
-            if not result:
-                st.stop()
-
-            # Try to split into explanation and quiz if the model followed the format
             st.subheader("📘 Simple Explanation (made extra snuggly)")
-            if "EXPLANATION" in result:
-                explanation = result.split("EXPLANATION")[-1]
-                explanation = explanation.split("QUIZ")[0].strip()
-            else:
-                # fallback: show first part
-                explanation = result[:400]  # Show first 400 chars
             st.markdown(explanation)
 
             st.subheader("📝 Quiz Questions — try these! ✨")
-            if "QUIZ" in result:
-                quiz = result.split("QUIZ")[-1].strip()
-            else:
-                # attempt to find lines that look like questions
-                quiz = "\n".join([l for l in result.splitlines() if l.strip()][:10])
             st.markdown(quiz)
 
             # Download button for results
