@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import json
 import os
 
@@ -32,7 +32,8 @@ if not api_key:
     st.info("Enter your OpenAI API key to generate explanations. (I promise to be gentle!) 🥺")
     st.stop()
 
-openai.api_key = api_key
+# Create OpenAI client (newer openai-python interface)
+client = OpenAI(api_key=api_key)
 
 prompt_template = (
     "You are an assistant that explains academic text simply and concisely."
@@ -48,8 +49,8 @@ def build_prompt(text, age, n):
     return prompt_template.format(age=age, n=n, input_text=text)
 
 
-def call_openai(prompt):
-    return openai.ChatCompletion.create(
+def call_openai(prompt, client):
+    return client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
@@ -63,8 +64,15 @@ if st.button("Explain It! 💖"):
         prompt = build_prompt(user_text, age, num_questions)
         with st.spinner("Thinking cute thoughts... ✨"):
             try:
-                resp = call_openai(prompt)
-                result = resp["choices"][0]["message"]["content"].strip()
+                resp = call_openai(prompt, client)
+                # handle a couple of possible response shapes
+                try:
+                    result = resp["choices"][0]["message"]["content"].strip()
+                except Exception:
+                    try:
+                        result = resp.choices[0].message.content.strip()
+                    except Exception:
+                        result = str(resp)
 
                 # Try to split into explanation and quiz if the assistant followed the format
                 st.subheader("📘 Simple Explanation (made extra snuggly)")
@@ -90,7 +98,5 @@ if st.button("Explain It! 💖"):
 
                 st.markdown("<small>Made with 💖 by Riven ;3 — happy studying!</small>", unsafe_allow_html=True)
 
-            except openai.error.OpenAIError as e:
-                st.error(f"OpenAI API error: {e} 😿")
             except Exception as e:
                 st.error(f"Error: {e} 😵‍💫")
