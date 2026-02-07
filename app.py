@@ -1,6 +1,7 @@
 import streamlit as st
 import openai
 import json
+import os
 
 st.set_page_config(page_title="ExplainItSimple", page_icon="🧠✨")
 
@@ -8,7 +9,19 @@ st.title("🧠✨ ExplainItSimple >.<")
 st.write("Paste your homework or notes below—I'll make them suuuper simple and cute! 💖")
 
 # ---- Inputs ----
-api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+api_key = None
+# Prefer Streamlit secrets, then environment variable, then UI input.
+# IMPORTANT: do NOT commit your API key to the repo.
+if hasattr(st, "secrets") and st.secrets.get("OPENAI_API_KEY"):
+    api_key = st.secrets.get("OPENAI_API_KEY")
+else:
+    api_key = os.getenv("OPENAI_API_KEY")
+
+if api_key:
+    st.info("Using OpenAI key from environment/Streamlit secrets. 🔒")
+else:
+    api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+
 user_text = st.text_area("Paste your text here (or drop a paragraph):", height=250)
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
