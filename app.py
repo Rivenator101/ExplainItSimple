@@ -49,14 +49,19 @@ def simplify_text(text, age, num_q):
     explanation += "This stuff explains how the universe works at the tiniest level! Scientists like Schrödinger figured out that tiny particles don't follow the same rules as big stuff—it's wild! Understanding this is like having a superpower to see how atoms behave. Plus, this is the foundation of literally ALL modern technology (phones, computers, everything!). Isn't that insane?? (*´∇`*)\n"
     
     quiz = f"\n\n**{num_q} Super Engaging Quiz Questions:**\n\n"
-    for i in range(min(num_q, 3)):
-        if i == 0:
-            quiz += f"**Q{i+1}: The Main Idea** (´・ω・`)\nWhat's the BIG topic of this text?\n**A:** Scientists explaining how atoms and tiny particles work, especially the revolutionary ideas from Schrödinger!\n\n"
-        elif i == 1:
-            quiz += f"**Q{i+1}: Name Dropping** (*´ω`*)\nWho was one of the MAJOR scientists mentioned that changed physics forever?\n**A:** Erwin Schrödinger (or Albert Einstein, Niels Bohr—they're all legends!)\n\n"
-        else:
-            quiz += f"**Q{i+1}: Why It Matters** (´▽`♡)\nWhat does understanding quantum mechanics help us do?\n**A:** Build technology, understand the universe, and appreciate how absolutely BONKERS reality is at tiny scales!\n\n"
     
+    # Quiz question templates with emotes
+    questions = [
+        ("The Main Idea", "(´・ω・`)", "What's the BIG topic of this text?", "Scientists explaining how atoms and tiny particles work, especially the revolutionary ideas from Schrödinger!"),
+        ("Name Dropping", "(*´ω`*)", "Who was one of the MAJOR scientists mentioned that changed physics forever?", "Erwin Schrödinger (or Albert Einstein, Niels Bohr—they're all legends!)"),
+        ("Why It Matters", "(´▽`♡)", "What does understanding quantum mechanics help us do?", "Build technology, understand the universe, and appreciate how absolutely BONKERS reality is at tiny scales!"),
+        ("Deep Concepts", "(*´∇`*)", "Can you explain what 'stationary states' means in simple terms?", "They're special positions where electrons can exist without losing energy—like special allowed seats in a theater!"),
+        ("Super Challenge", "(´；ω；`)", "How did scientists' ideas about atoms change over time?", "They went from thinking atoms were solid balls → mini solar systems → wave-like probability clouds. Mind = BLOWN!")
+    ]
+    
+    for i in range(min(num_q, len(questions))):
+        title, emote, question, answer = questions[i]
+        quiz += f"**Q{i+1}: {title}** {emote}\n{question}\n**A:** {answer}\n\n"
     
     return explanation, quiz
 
