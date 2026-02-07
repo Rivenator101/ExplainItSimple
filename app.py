@@ -95,6 +95,11 @@ if st.button("Explain It! 💖"):
                     st.error(f"Error: {e} 😵‍💫")
                     result = None
 
+                # If no result was produced (e.g., both preferred and fallback failed), stop gracefully
+                if not result:
+                    st.error("No response from OpenAI — likely quota exhausted or an API error. Please check your API key/billing and try again.")
+                    st.stop()
+
                 # Try to split into explanation and quiz if the assistant followed the format
                 st.subheader("📘 Simple Explanation (made extra snuggly)")
                 if "EXPLANATION" in result:
