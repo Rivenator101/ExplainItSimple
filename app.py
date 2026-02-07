@@ -1,5 +1,5 @@
 import streamlit as st
-import requests
+import replicate
 import json
 import os
 
@@ -12,23 +12,26 @@ st.write("Paste your homework or notes below—I'll make them suuuper simple and
 api_key = None
 # Prefer Streamlit secrets, then environment variable, then UI input.
 # IMPORTANT: do NOT commit your API key to the repo.
-if hasattr(st, "secrets") and st.secrets.get("HUGGINGFACE_API_KEY"):
-    api_key = st.secrets.get("HUGGINGFACE_API_KEY")
+if hasattr(st, "secrets") and st.secrets.get("REPLICATE_API_TOKEN"):
+    api_key = st.secrets.get("REPLICATE_API_TOKEN")
 else:
-    api_key = os.getenv("HUGGINGFACE_API_KEY")
+    api_key = os.getenv("REPLICATE_API_TOKEN")
 
 if api_key:
-    st.info("Using HuggingFace API key from environment/Streamlit secrets. 🔒")
+    st.info("Using Replicate API key from environment/Streamlit secrets. 🔒")
 else:
-    api_key = st.text_input("Enter your HuggingFace API Key (free at https://huggingface.co/settings/tokens):", type="password")
+    api_key = st.text_input("Enter your Replicate API Token (free at https://replicate.com/account/api-tokens):", type="password")
 
 user_text = st.text_area("Paste your text here (or drop a paragraph):", height=250)
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
 
 if not api_key:
-    st.info("Enter your HuggingFace API key (free, no age restriction!) to generate explanations. (I promise to be gentle!) 🥺")
+    st.info("Enter your Replicate API token (free, no age restriction!) to generate explanations. (I promise to be gentle!) 🥺")
     st.stop()
+
+# Set Replicate API token
+os.environ["REPLICATE_API_TOKEN"] = api_key
 
 prompt_template = (
     "You are an assistant that explains academic text simply and concisely."
@@ -45,25 +48,15 @@ def build_prompt(text, age, n):
 
 
 def call_openai(prompt, api_key, model="meta-llama/Llama-2-7b-chat-hf", max_tokens=800):
-    """Call HuggingFace Inference API."""
-    url = f"https://router.huggingface.co/models/{model}"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_length": max_tokens,
-            "temperature": 0.2,
-        }
-    }
-    resp = requests.post(url, headers=headers, json=payload)
-    if resp.status_code != 200:
-        raise Exception(f"HuggingFace API error: {resp.text}")
-    result = resp.json()
-    # Extract text from response
-    if isinstance(result, list) and len(result) > 0:
-        if "generated_text" in result[0]:
-            return result[0]["generated_text"]
-    return str(result)
+    """Call Replicate API."""
+    output = replicate.run(
+        model,
+        input={"prompt": prompt, "max_length": max_tokens, "temperature": 0.2}
+    )
+    # output is a list of strings
+    if isinstance(output, list):
+        return "".join(output)
+    return str(output)
 
 if st.button("Explain It! 💖"):
     if not user_text.strip():
