@@ -1,5 +1,5 @@
 import streamlit as st
-import replicate
+import requests
 import json
 import os
 
@@ -9,29 +9,9 @@ st.title("🧠✨ ExplainItSimple >.<")
 st.write("Paste your homework or notes below—I'll make them suuuper simple and cute! 💖")
 
 # ---- Inputs ----
-api_key = None
-# Prefer Streamlit secrets, then environment variable, then UI input.
-# IMPORTANT: do NOT commit your API key to the repo.
-if hasattr(st, "secrets") and st.secrets.get("REPLICATE_API_TOKEN"):
-    api_key = st.secrets.get("REPLICATE_API_TOKEN")
-else:
-    api_key = os.getenv("REPLICATE_API_TOKEN")
-
-if api_key:
-    st.info("Using Replicate API key from environment/Streamlit secrets. 🔒")
-else:
-    api_key = st.text_input("Enter your Replicate API Token (free at https://replicate.com/account/api-tokens):", type="password")
-
 user_text = st.text_area("Paste your text here (or drop a paragraph):", height=250)
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
-
-if not api_key:
-    st.info("Enter your Replicate API token (free, no age restriction!) to generate explanations. (I promise to be gentle!) 🥺")
-    st.stop()
-
-# Set Replicate API token
-os.environ["REPLICATE_API_TOKEN"] = api_key
 
 prompt_template = (
     "You are an assistant that explains academic text simply and concisely."
@@ -47,16 +27,30 @@ def build_prompt(text, age, n):
     return prompt_template.format(age=age, n=n, input_text=text)
 
 
-def call_openai(prompt, api_key, model="meta-llama/Llama-2-7b-chat-hf", max_tokens=800):
-    """Call Replicate API."""
-    output = replicate.run(
-        model,
-        input={"prompt": prompt, "max_length": max_tokens, "temperature": 0.2}
-    )
-    # output is a list of strings
-    if isinstance(output, list):
-        return "".join(output)
-    return str(output)
+def call_openai(prompt, model="gpt2", max_tokens=800):
+    """Call free HuggingFace Inference API using public endpoints (no auth needed)."""
+    # Using Hugging Face's Inference API via public model endpoints
+    api_url = "https://api-inference.huggingface.co/models/gpt2"
+    
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_length": max_tokens,
+            "temperature": 0.7,
+        }
+    }
+    
+    try:
+        response = requests.post(api_url, json=payload, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        
+        if isinstance(result, list) and len(result) > 0:
+            return result[0].get("generated_text", "")
+        return str(result)
+    except Exception as e:
+        st.error(f"API Error: {str(e)[:100]} 😿")
+        return None
 
 if st.button("Explain It! 💖"):
     if not user_text.strip():
@@ -66,7 +60,7 @@ if st.button("Explain It! 💖"):
         with st.spinner("Thinking cute thoughts... ✨"):
             result = None
             try:
-                result = call_openai(prompt, api_key, model="meta-llama/Llama-2-7b-chat-hf", max_tokens=800)
+                result = call_openai(prompt, model="gpt2", max_tokens=800)
             except Exception as e:
                 st.error(f"Error: {e} 😵‍💫")
                 st.stop()
