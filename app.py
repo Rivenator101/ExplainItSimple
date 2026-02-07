@@ -2,10 +2,10 @@ import streamlit as st
 import json
 import re
 
-st.set_page_config(page_title="ExplainItSimple", page_icon="🧠✨")
+st.set_page_config(page_title="ExplainItSimple", page_icon="(´・ω・`)")
 
-st.title("🧠✨ ExplainItSimple >.<")
-st.write("Paste your homework or notes below—I'll make them suuuper simple and cute! 💖")
+st.title("(*´ω`*) ExplainItSimple >.<")
+st.write("Paste your homework or notes below—I'll make them suuuper simple and cute! (´▽`♡)")
 
 # ---- Inputs ----
 user_text = st.text_area("Paste your text here (or drop a paragraph):", height=250)
@@ -30,7 +30,7 @@ def simplify_text(text, age, num_q):
         simple = simple.replace("electrostatic", "electric")
         explanation += f"{i}. {simple}\n"
     
-    explanation += f"\n**Why is this cool?** Because it helps us understand how things work at super tiny scales! ✨"
+    explanation += f"\n**Why is this cool?** Because it helps us understand how things work at super tiny scales! (*´∇`*)"
     
     quiz = f"**{num_q} Quick Quiz Questions:**\n\n"
     for i in range(min(num_q, 3)):
@@ -43,21 +43,21 @@ def simplify_text(text, age, num_q):
     
     return explanation, quiz
 
-if st.button("Explain It! 💖"):
+if st.button("Explain It! (´▽`♡)"):
     if not user_text.strip():
-        st.warning("Please paste some text to explain. I can't read blank vibes! >.<")
+        st.warning("Please paste some text to explain. I can't read blank vibes! (´；ω；`)")
     else:
-        with st.spinner("Thinking cute thoughts... ✨"):
+        with st.spinner("Thinking cute thoughts... (*´∇`*)"):
             explanation, quiz = simplify_text(user_text, age, num_questions)
 
-            st.subheader("📘 Simple Explanation (made extra snuggly)")
+            st.subheader("(´・ω・`) Simple Explanation (made extra snuggly)")
             st.markdown(explanation)
 
-            st.subheader("📝 Quiz Questions — try these! ✨")
+            st.subheader("(´・ω・`) Quiz Questions — try these! (*´∇`*)")
             st.markdown(quiz)
 
             # Download button for results
             out = {"explanation": explanation, "quiz": quiz}
-            st.download_button("Download result (JSON) 💾", data=json.dumps(out, indent=2), file_name="explainitsimple_result.json", mime="application/json")
+            st.download_button("Download result (JSON) (´・ω・`)", data=json.dumps(out, indent=2), file_name="explainitsimple_result.json", mime="application/json")
 
-            st.markdown("<small>Made with 💖 by Riven ;3 — happy studying!</small>", unsafe_allow_html=True)
+            st.markdown("<small>Made with (´▽`♡) by Riven >w< — happy studying!</small>", unsafe_allow_html=True)
