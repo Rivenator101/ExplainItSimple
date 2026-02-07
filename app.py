@@ -26,7 +26,8 @@ user_text = st.text_area("Paste your text here (or drop a paragraph):", height=2
 age = st.slider("Explain for approximately this age (years):", min_value=8, max_value=18, value=12)
 num_questions = st.slider("Number of cute quiz questions:", min_value=1, max_value=5, value=3)
 
-MODEL = "gpt-4o-mini"  # change if you prefer another model
+MODEL = "gpt-4o-mini"  # preferred model
+FALLBACK_MODEL = "gpt-3.5-turbo"  # cheaper fallback if quota errors occur
 
 if not api_key:
     st.info("Enter your OpenAI API key to generate explanations. (I promise to be gentle!) 🥺")
@@ -49,12 +50,12 @@ def build_prompt(text, age, n):
     return prompt_template.format(age=age, n=n, input_text=text)
 
 
-def call_openai(prompt, client):
+def call_openai(prompt, client, model=MODEL, max_tokens=800):
     return client.chat.completions.create(
-        model=MODEL,
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        max_tokens=800,
+        max_tokens=max_tokens,
     )
 
 if st.button("Explain It! 💖"):
@@ -64,7 +65,7 @@ if st.button("Explain It! 💖"):
         prompt = build_prompt(user_text, age, num_questions)
         with st.spinner("Thinking cute thoughts... ✨"):
             try:
-                resp = call_openai(prompt, client)
+                resp = call_openai(prompt, client, model=MODEL, max_tokens=800)
                 # handle a couple of possible response shapes
                 try:
                     result = resp["choices"][0]["message"]["content"].strip()
@@ -73,6 +74,26 @@ if st.button("Explain It! 💖"):
                         result = resp.choices[0].message.content.strip()
                     except Exception:
                         result = str(resp)
+            except Exception as e:
+                # Detect quota or rate-limit style errors and try a cheaper fallback model
+                msg = str(e)
+                if "quota" in msg.lower() or "exceeded" in msg.lower() or "insufficient_quota" in msg.lower() or "429" in msg:
+                    st.warning("Quota exceeded for the preferred model — trying a cheaper fallback model (gpt-3.5-turbo). ⏳")
+                    try:
+                        resp = call_openai(prompt, client, model=FALLBACK_MODEL, max_tokens=400)
+                        try:
+                            result = resp["choices"][0]["message"]["content"].strip()
+                        except Exception:
+                            try:
+                                result = resp.choices[0].message.content.strip()
+                            except Exception:
+                                result = str(resp)
+                    except Exception as e2:
+                        st.error(f"Fallback model error: {e2} 😿")
+                        result = None
+                else:
+                    st.error(f"Error: {e} 😵‍💫")
+                    result = None
 
                 # Try to split into explanation and quiz if the assistant followed the format
                 st.subheader("📘 Simple Explanation (made extra snuggly)")
